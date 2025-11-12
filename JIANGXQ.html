@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no" />
+    <title>姜</title>
+    <style>
+        :root{ --glow-r1:8px; --glow-r2:16px; }
+        html,body{
+            height:100%;margin:0;overflow:hidden;
+            font-family:"微软雅黑",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+            transition:background 1s;
+            background: #000000;
+            color:#eee;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-perspective: 1000;
+            perspective: 1000;
+        }
+        body.eco{ --glow-r1:5px; --glow-r2:12px; }
+
+        .stage{position:relative;width:100%;height:100%;}
+
+        .msg{
+            position:absolute;left:50%;top:50%;
+            padding:10px 16px;border-radius:16px;
+            color:#fff;font-weight:700;
+            font-size:clamp(12px,2.5vmin,18px);
+            text-shadow:0 2px 8px rgba(0,0,0,.28);
+            opacity:0;
+            transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.75) rotate(var(--rot));
+            animation: flight var(--dur) cubic-bezier(.25,.7,.3,1) var(--delay) both;
+            box-shadow:none;
+            filter: drop-shadow(0 0 var(--glow-r1) var(--glow1, rgba(0,0,0,0)));
+            will-change: transform, opacity;
+            background: var(--bg);
+            z-index:10;
+        }
+
+        @keyframes flight{
+            0%{ opacity:0; transform:translate(-50%,-50%) translate(var(--dx),var(--dy)) scale(.75) rotate(var(--rot)); }
+            18%{ opacity:1; }
+            45%{ transform:translate(-50%,-50%) translate(calc(var(--dx)*.2),calc(var(--dy)*.2)) scale(1.06); }
+            70%{ transform:translate(-50%,-50%) translate(calc(var(--dx)*1.15),calc(var(--dy)*1.15)) scale(.95) rotate(var(--rot)); }
+            88%{ transform:translate(-50%,-50%) translate(calc(var(--heart-x)*.6),calc(var(--heart-y)*.6)) scale(.9) rotate(var(--heart-rot)); }
+            100%{ opacity:1; transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1) rotate(var(--heart-rot)); }
+        }
+
+        .msg::before,.msg::after{
+            content:''; position:absolute; left:50%; top:0;
+            background:inherit;
+            border-radius:50px 50px 0 0;
+            width:20px; height:30px; opacity:0;
+            transition:opacity .28s ease;
+            transform-origin:0 100%; transform:rotate(-45deg); z-index:0;
+        }
+        .msg::after{
+            left:0; transform-origin:100% 100%; transform:rotate(45deg);
+        }
+        .msg.heart-mode{ color:#fff; }
+        .msg .text{ position:relative; z-index:1; }
+        .msg.heart-mode::before,.msg.heart-mode::after{ opacity:1; }
+
+        .msg.locked{
+            animation:none;
+            transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1) rotate(var(--heart-rot));
+            opacity:1;
+        }
+        .msg.locked.pulse{ animation:pulse 2.2s ease-in-out 1; }
+        .msg.locked::before,.msg.locked::after{ display:none; }
+        .msg.locked .text{ text-shadow:0 1px 2px rgba(0,0,0,.12); }
+
+        @keyframes pulse{
+            0%,100%{ transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1); }
+            50%{ transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1.08); }
+        }
+
+        /* 爆炸动画（核心破碎效果） */
+        .msg.burst{ animation: burst 1.4s cubic-bezier(.17,.6,.2,1) forwards; }
+        @keyframes burst{
+            0%{ opacity:1; transform:translate(-50%,-50%) translate(var(--heart-x),var(--heart-y)) scale(1); filter:blur(0); }
+            70%{ opacity:.9; transform:translate(-50%,-50%) translate(calc(var(--heart-x) + var(--bx)*0.7), calc(var(--heart-y) + var(--by)*0.7)) scale(.9) rotate(var(--rot)); filter:blur(.3px); }
+            100%{ opacity:0; transform:translate(-50%,-50%) translate(calc(var(--heart-x) + var(--bx)), calc(var(--heart-y) + var(--by))) scale(.7) rotate(var(--rot)); filter:blur(1px); }
+        }
+
+        .center-title{
+            position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+            font-weight:800; letter-spacing:.12em;
+            font-size:clamp(16px,3.5vmin,24px);
+            color:rgba(255,160,200,.9); text-shadow:0 0 18px rgba(255,130,200,.35);
+            opacity:.0; pointer-events:none;
+            animation:titleIn 1.2s ease 0.8s both;
+            z-index:20;
+        }
+        @keyframes titleIn{ from{opacity:0; transform:translate(-50%,-55%);} to{opacity:.95; transform:translate(-50%,-50%);} }
+
+        .snow{
+            position:fixed; top:-10px; color:white;
+            user-select:none; pointer-events:none;
+            z-index:99;
+            text-shadow:0 0 8px rgba(255,255,255,.8);
+            animation:snowfall linear forwards;
+        }
+        @keyframes snowfall{ 0%{ transform:translateY(0) rotate(0deg); opacity:1;} 100%{ transform:translateY(100vh) rotate(360deg); opacity:0;} }
+
+        #bgMusic { display: none; }
+
+        /* 右下角固定文字样式 - 与其他文字样式一致 */
+        .signature {
+            position: fixed; right: 20px; bottom: 20px;
+            padding: 8px 12px; border-radius: 12px;
+            font-weight: 700;
+            font-size: clamp(12px, 2.5vmin, 18px);
+            color: #fff;
+            text-shadow:0 2px 8px rgba(0,0,0,.28);
+            box-shadow: none;
+            filter: drop-shadow(0 0 var(--glow-r1) var(--glow1, rgba(0,0,0,0)));
+            z-index: 100;
+            background: var(--bg-signature);
+        }
+        .signature .text { position: relative; z-index: 1; }
+    </style>
+</head>
+<body>
+    <div class="stage" id="stage">
+        <div class="center-title" id="title">for you ♥</div>
+    </div>
+    
+    <!-- 右下角固定文字 -->
+    <div class="signature" id="signature">
+        <span class="text">JIANGXQ</span>
+    </div>
+    
+    <audio id="bgMusic" loop autoplay muted>
+        <source src="https://lf26-music-east.douyinstatic.com/obj/ies-music-hj/7495920705440140091.mp3" type="audio/mpeg">
+        <source src="https://lf26-music-east.douyinstatic.com/obj/ies-music-hj/7495920705440140091.mp3" type="audio/ogg">
+    </audio>
+
+<script>
+// 性能监控
+let lastTime = 0;
+let frameCount = 0;
+let fps = 60;
+
+const tips=[
+    '想念在风里飘','喜欢你很久了','你是我的心动','温柔落在人间',
+    '梦里有你真好','世界因你柔软','心跳为你加速','有你真好',
+    '遇见你是浪漫的开始','晚风也温柔了',
+    '想陪你看星星','今夜的梦给你','宇宙都在偏爱你','你是人间的奇迹',
+    '拥抱要紧一点','想你成习惯了','一瞬也是永恒','你眼里有星星','你的温柔让我沦陷',
+    '风都是甜的','为你心动不止','想成为你的例外','心有桃花一片','你是我梦里的海'
+];
+
+const stage = document.getElementById('stage');
+const title = document.getElementById('title');
+const signature = document.getElementById('signature');
+const bgMusic = document.getElementById('bgMusic');
+let eco = false;
+let snowRunning = false;
+let snowFrame;
+let lastSnowTime = 0;
+let snowIntervalMs = 900; // 增加雪花间隔，减少数量
+let snowMax = 80; // 减少最大雪花数量
+let totalCurrent = 0;
+let lockedCount = 0;
+
+// 对象池优化
+const msgPool = [];
+const snowPool = [];
+const MAX_POOL_SIZE = 150;
+
+const directions = [
+    {dx:'0vw',dy:'-80vh'},{dx:'0vw',dy:'80vh'},
+    {dx:'-80vw',dy:'0vh'},{dx:'80vw',dy:'0vh'},
+    {dx:'-70vw',dy:'-70vh'},{dx:'70vw',dy:'-70vh'},
+    {dx:'-70vw',dy:'70vh'},{dx:'70vw',dy:'70vh'}
+];
+
+function rand(min,max){return Math.random()*(max-min)+min;}
+
+function hexToRgba(hex,alpha=1){
+    const h=hex.replace('#','');
+    const short=h.length===3;
+    const r=parseInt(short? h[0]+h[0] : h.slice(0,2),16);
+    const g=parseInt(short? h[1]+h[1] : h.slice(2,4),16);
+    const b=parseInt(short? h[2]+h[2] : h.slice(4,6),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function randomStyle(){
+    const arr=[
+        ['#ff758c','#ff7eb3'], ['#a18cd1','#fbc2eb'],
+        ['#f6d365','#fda085'], ['#84fab0','#8fd3f4'],
+        ['#f093fb','#f5576c'], ['#4facfe','#00f2fe']
+    ];
+    const [c1,c2]=arr[Math.floor(Math.random()*arr.length)];
+    return {
+        bg:`linear-gradient(135deg,${c1},${c2})`,
+        glow1:hexToRgba(c1,0.5),
+        glow2:hexToRgba(c2,0.3)
+    };
+}
+
+function heartScale(){
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    let s = Math.round(minDim * 0.02);
+    s = Math.max(7, Math.min(18, s));
+    if (eco) s = Math.max(7, Math.floor(s * 0.9));
+    return s;
+}
+
+function centerYOffset(){
+    const portrait = window.innerHeight > window.innerWidth;
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    return portrait ? -minDim * 0.06 : 0;
+}
+
+function heartXY(t){
+    const s = heartScale();
+    const x = s * (16 * Math.sin(t)**3);
+    const y = -s * (13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t));
+    return {x: x+'px', y: (y + centerYOffset())+'px'};
+}
+
+// 使用对象池创建消息元素
+function createMsg(i,total){
+    let el;
+    
+    // 从对象池获取元素，没有则创建新的
+    if(msgPool.length > 0){
+        el = msgPool.pop();
+        // 清除之前的事件监听器
+        const newEl = el.cloneNode(true);
+        stage.removeChild(el);
+        el = newEl;
+    } else {
+        el = document.createElement('div');
+        el.className = 'msg';
+        const span = document.createElement('span');
+        span.className = 'text';
+        el.appendChild(span);
+    }
+
+    const d = directions[Math.floor(Math.random()*directions.length)];
+    el.style.setProperty('--dx', d.dx);
+    el.style.setProperty('--dy', d.dy);
+    el.style.setProperty('--rot', rand(-55,55)+'deg');
+
+    // 减少动画持续时间以提高流畅度
+    const baseDur = eco ? rand(5.0,6.0) : rand(5.5,7.0);
+    el.style.setProperty('--dur', baseDur+'s');
+    el.style.setProperty('--delay', (i*0.08 + rand(0,0.2))+'s');
+    
+    const sty = randomStyle();
+    el.style.setProperty('--bg', sty.bg);
+    el.style.setProperty('--glow1', sty.glow1);
+    el.style.setProperty('--glow2', sty.glow2);
+
+    const t = (i / total) * Math.PI * 2;
+    const {x,y} = heartXY(t);
+    el.style.setProperty('--heart-x', x);
+    el.style.setProperty('--heart-y', y);
+    el.style.setProperty('--heart-rot', rand(-18,18)+'deg');
+
+    // 减少文本提示数量以提高性能
+    el.querySelector('.text').textContent = tips[Math.floor(Math.random()*tips.length)];
+
+    const delay = parseFloat(el.style.getPropertyValue('--delay'));
+    const dur = parseFloat(el.style.getPropertyValue('--dur'));
+    const switchAt = delay + dur * 0.86;
+    const switchTimer = setTimeout(()=>{ el.classList.add('heart-mode'); }, switchAt*1000);
+
+    el.addEventListener('animationend',()=>{
+        clearTimeout(switchTimer);
+        el.classList.add('heart-mode','locked','pulse');
+        el.style.willChange = 'auto';
+
+        const spread = rand(140, 260);
+        const ang = rand(0, Math.PI*2);
+        const bx = Math.cos(ang)*spread;
+        const by = Math.sin(ang)*spread;
+        el.style.setProperty('--bx', bx+'px');
+        el.style.setProperty('--by', by+'px');
+
+        lockedCount++;
+        if(lockedCount===totalCurrent) onAllLocked();
+    }, {once:true});
+
+    stage.appendChild(el);
+}
+
+function finalBurst(){
+    // 批量操作DOM以减少重排
+    const msgElements = stage.querySelectorAll('.msg.locked');
+    
+    // 使用requestAnimationFrame减少布局抖动
+    requestAnimationFrame(() => {
+        msgElements.forEach((el, index) => {
+            // 延迟处理以分散负载
+            setTimeout(() => {
+                el.classList.remove('pulse');
+                const jitter = rand(0, 200);
+                setTimeout(() => {
+                    el.classList.add('burst');
+                    el.addEventListener('animationend',() => {
+                        // 动画结束后放入对象池而不是销毁
+                        if(msgPool.length < MAX_POOL_SIZE) {
+                            el.className = 'msg'; // 重置类
+                            msgPool.push(el);
+                        } else {
+                            el.remove();
+                        }
+                    }, {once:true});
+                }, jitter);
+            }, index * 5);
+        });
+        title.style.opacity = 0;
+    });
+}
+
+function play(){
+    // 清空舞台
+    stage.querySelectorAll('.msg').forEach(n=>{
+        if(msgPool.length < MAX_POOL_SIZE) {
+            n.className = 'msg';
+            msgPool.push(n);
+        } else {
+            n.remove();
+        }
+    });
+    title.style.opacity = 0;
+
+    // 减少元素总数，特别是在移动设备上
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    let TOTAL;
+    if (minDim <= 420) {
+        TOTAL = eco ? 60 : 80; // 减少移动端元素数量
+    } else if (minDim <= 720) {
+        TOTAL = eco ? 75 : 100;
+    } else {
+        TOTAL = eco ? 85 : 120;
+    }
+    
+    totalCurrent = TOTAL;
+    lockedCount = 0;
+    
+    // 分批创建元素以避免一次性大量DOM操作
+    const batchSize = Math.min(20, TOTAL / 3);
+    let batchIndex = 0;
+    
+    function createBatch(){
+        const startIndex = batchIndex * batchSize;
+        const endIndex = Math.min(startIndex + batchSize, TOTAL);
+        
+        requestAnimationFrame(() => {
+            for(let i=startIndex; i<endIndex; i++){
+                createMsg(i, TOTAL);
+            }
+            
+            batchIndex++;
+            if(endIndex < TOTAL){
+                setTimeout(createBatch, 50); // 延迟创建下一批以避免阻塞主线程
+            }
+        });
+    }
+    
+    createBatch();
+    
+    setTimeout(()=>{ title.style.opacity = 1; }, 1400);
+    
+    // 延迟加载音乐以优先保证动画性能
+    setTimeout(playMusic, 1000);
+}
+
+function playMusic() {
+    try {
+        bgMusic.currentTime = 0;
+        bgMusic.muted = false; // 取消静音
+        bgMusic.play().catch(error => {
+            console.log('音乐播放需要用户交互:', error);
+        });
+    } catch(e) {
+        console.log('音乐播放错误:', e);
+    }
+}
+
+// 使用对象池创建雪花元素
+function createSnow(){
+    let snow;
+    
+    // 从对象池获取元素
+    if(snowPool.length > 0){
+        snow = snowPool.pop();
+        document.body.appendChild(snow);
+    } else {
+        snow = document.createElement('div');
+        snow.className='snow';
+        snow.textContent='❄';
+        document.body.appendChild(snow);
+    }
+    
+    snow.style.left=(Math.random()*100)+'vw';
+    snow.style.fontSize=(Math.random()*10+6)+'px'; // 稍微减小雪花大小
+    snow.style.opacity=(Math.random()*0.7+0.15);
+    const duration=(Math.random()*4+5); // 减少雪花飘落时间
+    snow.style.animationDuration=duration+'s';
+    
+    // 动画结束后回收雪花
+    snow.addEventListener('animationend', function onEnd(){
+        snow.removeEventListener('animationend', onEnd);
+        if(snowRunning && snowPool.length < MAX_POOL_SIZE) {
+            snowPool.push(snow);
+        }
+        snow.remove();
+    }, {once:true});
+}
+
+function loopSnow(ts){
+    // 帧率控制：如果FPS低于某个阈值，减少雪花生成
+    if(ts - lastTime > 1000) {
+        fps = Math.round((frameCount * 1000) / (ts - lastTime));
+        lastTime = ts;
+        frameCount = 0;
+        
+        // 动态调整雪花生成速率
+        if(fps < 40) {
+            snowIntervalMs = Math.min(snowIntervalMs + 100, 2000);
+        } else if(fps > 55 && snowIntervalMs > 500) {
+            snowIntervalMs = Math.max(snowIntervalMs - 50, 500);
+        }
+    }
+    frameCount++;
+    
+    if(!lastSnowTime) lastSnowTime=ts;
+    const delta=ts-lastSnowTime;
+    
+    // 根据性能动态调整雪花生成频率
+    if(delta>snowIntervalMs){
+        if(snowRunning && fps > 30) {
+            const count = document.querySelectorAll('.snow').length;
+            if(count < snowMax) {
+                requestAnimationFrame(createSnow);
+            }
+        }
+        lastSnowTime=ts;
+    }
+    
+    if(snowRunning) {
+        snowFrame=requestAnimationFrame(loopSnow);
+    }
+}
+
+function startSnow(){
+    if(!snowRunning) {
+        snowRunning=true;
+        lastSnowTime=0;
+        requestAnimationFrame(loopSnow);
+    }
+}
+
+function stopSnow(){
+    snowRunning=false;
+    cancelAnimationFrame(snowFrame);
+    // 回收雪花到对象池
+    const snows = document.querySelectorAll('.snow');
+    snows.forEach(snow => {
+        if(snowPool.length < MAX_POOL_SIZE) {
+            snowPool.push(snow);
+        }
+        snow.remove();
+    });
+}
+
+function decideEco(){
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    const area = window.innerWidth * window.innerHeight;
+    
+    // 更激进地启用节能模式
+    // 移动设备默认使用节能模式
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    return isMobile || (cores <= 4) || (mem <= 3) || (area >= 2400*1440);
+}
+
+/* 所有元素锁定后触发破碎效果（核心修改） */
+function onAllLocked(){
+    // 减少雪花数量以提高破碎时的性能
+    snowIntervalMs = eco ? 1000 : 600;
+    snowMax = eco ? 50 : 100;
+
+    // 延迟2秒后破碎
+    setTimeout(()=>{
+        finalBurst();
+    }, 2000);
+}
+
+// 设置右下角文字样式
+function setSignatureStyle() {
+    const sty = randomStyle();
+    signature.style.setProperty('--bg-signature', sty.bg);
+    signature.style.setProperty('--glow1', sty.glow1);
+    signature.style.setProperty('--glow2', sty.glow2);
+}
+
+// 初始化节能模式
+function initialize() {
+    // 优先判断是否为移动设备
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // 移动设备强制使用节能模式
+    eco = isMobile || decideEco();
+    document.body.classList.toggle('eco', eco);
+    
+    // 移动设备使用更保守的参数
+    if(isMobile) {
+        snowIntervalMs = 1000;
+        snowMax = 60;
+    } else {
+        snowIntervalMs = eco ? 800 : 500;
+        snowMax = eco ? 80 : 140;
+    }
+    
+    startSnow();
+    setSignatureStyle();
+    
+    // 延迟播放以确保页面加载完成
+    setTimeout(play, 300);
+}
+
+// 初始播放
+initialize();
+
+// 窗口大小变化防抖重绘
+let resizeTimer;
+window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(()=> play(), 300); // 增加延迟以避免频繁重绘
+});
+
+// 首次点击触发音乐播放（解决浏览器限制）
+document.addEventListener('click', () => {
+    if (bgMusic.paused) {
+        playMusic();
+    }
+}, { once: true });
+</script>
+</body>
+</html>
